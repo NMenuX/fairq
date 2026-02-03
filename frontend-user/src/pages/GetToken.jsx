@@ -119,6 +119,14 @@ function GetToken() {
         throw new Error(data.detail || 'Failed to send OTP')
       }
 
+      const data = await response.json()
+
+      // DEMO MODE: Show OTP in alert and auto-fill (remove in production)
+      if (data.otp) {
+        alert(`[DEMO] Your OTP is: ${data.otp}\n\nIn production, this would be sent via SMS.`)
+        setOtp(data.otp) // Auto-fill for demo
+      }
+
       setOtpSent(true)
       setStep(1)
     } catch (err) {
