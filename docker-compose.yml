@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=sqlite:////data/fairq.db
+      - SEED=1
+    ports:
+      - "8000:8000"
+    volumes:
+      - api_data:/data
+    restart: unless-stopped
+
+volumes:
+  api_data:
+
+

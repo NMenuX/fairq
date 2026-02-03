@@ -1,0 +1,72 @@
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy.orm import Session
+from typing import Optional
+from ..schemas.queue import QueueOverview, QueueOverviewItem
+from ..db import models
+from ..services.runtime import get_db
+
+
+router = APIRouter(prefix="/queue", tags=["queue"])
+
+
+@router.get("/overview", response_model=QueueOverview)
+def queue_overview(
+    counter_id: Optional[int] = Query(None, description="Filter by counter ID"),
+    db: Session = Depends(get_db)
+) -> QueueOverview:
+    """Get queue overview, optionally filtered by counter"""
+    now = datetime.now(timezone.utc)
+    
+    # Base query for waiting tokens
+    query = db.query(models.Token).filter(models.Token.status == "WAITING")
+    
+    # If counter_id is provided, filter by counter's service types
+    if counter_id is not None:
+        counter = db.get(models.Counter, counter_id)
+        if not counter:
+            raise HTTPException(status_code=404, detail="Counter not found")
+        
+        counter_service_types = counter.get_service_types_list()
+        if counter_service_types:
+            query = query.filter(models.Token.service_type.in_(counter_service_types))
+        else:
+            # Counter has no service types, return empty queue
+            return QueueOverview(items=[])
+    
+    waiting = query.all()
+    
+    items: list[QueueOverviewItem] = []
+    for t in waiting:
+        created_at = t.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        wait_minutes = max((now - created_at).total_seconds() / 60.0, 0.0)
+        
+        # Calculate priority using DWFQ logic
+        # We'll use a local helper or import if needed, but the formula is simple:
+        # P = Score + (Wait / 50) * 0.1  (from dwfq.py)
+        # To ensure consistency, let's ideally import it, but for now implementing the formula here
+        # matches the logic without circular imports if policies imports services/etc.
+        # Actually better to import: from ..services.policies import dwfq
+        
+        v_score = float(t.vulnerability_score or 0.0)
+        priority = v_score + (wait_minutes / 50.0) # Matches simplified logic or use dwfq function
+        
+        items.append(QueueOverviewItem(
+            token_id=t.id,
+            number=t.number,
+            service_type=t.service_type,
+            status=t.status,
+            vulnerability_score=v_score,
+            wait_minutes=wait_minutes,
+        ))
+        # Store priority temporarily for sorting
+        items[-1]._sort_priority = priority
+
+    # Sort items by priority (descending)
+    items.sort(key=lambda x: getattr(x, '_sort_priority', 0), reverse=True)
+    
+    return QueueOverview(items=items)
+
+
