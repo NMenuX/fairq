@@ -14,6 +14,9 @@ class Token(Base):
     nic: Mapped[str | None] = mapped_column(String(12), nullable=True)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(1), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    language: Mapped[str | None] = mapped_column(String(20), nullable=True)  # sinhala, english, tamil
+    otp_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     disability: Mapped[bool] = mapped_column(Boolean, default=False)
     language_barrier: Mapped[float] = mapped_column(Float, default=0.0)
     vulnerability_score: Mapped[float] = mapped_column(Float, default=0.0)

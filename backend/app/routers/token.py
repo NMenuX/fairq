@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from ..schemas.token import TokenCreate, TokenOut
 from ..services.repo import TokenRepo
 from ..services.runtime import get_db
+from ..services import nic, sms
 from ..db import models
 
 
@@ -14,13 +15,45 @@ router = APIRouter(prefix="/tokens", tags=["tokens"])
 @router.post("/", response_model=TokenOut)
 def create_token(payload: TokenCreate, db: Session = Depends(get_db)) -> TokenOut:
     repo = TokenRepo(db)
-    # simple token number generator: T-<id> after flush
-    token = repo.create(number="TEMP", service_type=payload.service_type,
-                        nic=payload.nic, age=payload.age, gender=payload.gender,
-                        disability=payload.disability, language_barrier=payload.language_barrier,
-                        vulnerability_score=payload.vulnerability_score)
+    
+    # Auto-calculate age and gender from NIC
+    age = payload.age
+    gender = payload.gender
+    if payload.nic:
+        calculated_age = nic.extract_age_from_nic(payload.nic)
+        calculated_gender = nic.extract_gender_from_nic(payload.nic)
+        if calculated_age:
+            age = calculated_age
+        if calculated_gender:
+            gender = calculated_gender
+    
+    # Verify OTP if phone is provided
+    if payload.phone:
+        if not sms.is_phone_verified(payload.phone):
+            raise HTTPException(status_code=400, detail="Phone number not verified. Please verify OTP first.")
+    
+    # Create token
+    token = repo.create(
+        number="TEMP", 
+        service_type=payload.service_type,
+        nic=payload.nic, 
+        age=age, 
+        gender=gender,
+        phone=payload.phone,
+        language=payload.language,
+        otp_verified=sms.is_phone_verified(payload.phone) if payload.phone else False,
+        disability=payload.disability, 
+        language_barrier=payload.language_barrier,
+        vulnerability_score=payload.vulnerability_score
+    )
     token.number = f"T-{token.id}"
     db.commit()
+    
+    # Send SMS notification
+    if payload.phone:
+        sms.send_token_notification(payload.phone, token.number, token.service_type)
+        sms.clear_otp(payload.phone)  # Clear OTP after successful token creation
+    
     return TokenOut.model_validate(token)
 
 
@@ -37,11 +70,20 @@ def call_token(
         raise HTTPException(status_code=400, detail="Only WAITING tokens can be called")
     
     token.status = "CALLED"
+    counter_name = "the counter"
     if counter_id:
         token.counter_id = counter_id
+        counter = db.get(models.Counter, counter_id)
+        if counter:
+            counter_name = counter.name
         
     token.updated_at = datetime.now(timezone.utc)
     db.commit()
+    
+    # Send SMS notification when token is called
+    if token.phone:
+        sms.send_called_notification(token.phone, token.number, counter_name)
+    
     return {"status": "ok"}
 
 

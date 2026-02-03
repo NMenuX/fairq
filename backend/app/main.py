@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import health, token, queue, counter, metrics, auth
+from .routers import health, token, queue, counter, metrics, auth, otp
 
 app = FastAPI(title="FairQ Backend")
 
@@ -20,6 +20,7 @@ app.include_router(queue.router)
 app.include_router(counter.router)
 app.include_router(metrics.router)
 app.include_router(auth.router)
+app.include_router(otp.router)
 
 
 if __name__ == "__main__":

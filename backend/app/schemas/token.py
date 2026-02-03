@@ -7,6 +7,8 @@ class TokenBase(BaseModel):
     nic: str | None = None
     age: int | None = None
     gender: str | None = None
+    phone: str | None = None
+    language: str | None = None  # 'sinhala', 'english', 'tamil'
     disability: bool = False
     language_barrier: float = 0.0
     vulnerability_score: float = 0.0
