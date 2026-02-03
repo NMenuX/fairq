@@ -1,19 +1,85 @@
+# =============================================================================
+# FairQ - Docker Compose Configuration
+# =============================================================================
+# This runs all services together with one command: docker-compose up
+#
+# Services:
+#   - api:        Backend API (FastAPI) on port 8000
+#   - kiosk:      User-facing kiosk on port 5173
+#   - management: Admin dashboard on port 5174
+#   - counter:    Counter display on port 5175
+# =============================================================================
+
 version: "3.9"
+
 services:
+  # ===========================================================================
+  # BACKEND API
+  # ===========================================================================
   api:
     build:
       context: ./backend
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=sqlite:////data/fairq.db
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-change-in-production}
+      - SMS_MOCK_MODE=true
       - SEED=1
     ports:
       - "8000:8000"
     volumes:
       - api_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================================================
+  # KIOSK FRONTEND (User-facing token generation)
+  # ===========================================================================
+  kiosk:
+    build:
+      context: ./frontend-user
+      dockerfile: Dockerfile
+    environment:
+      - VITE_API_URL=http://api:8000
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ===========================================================================
+  # MANAGEMENT FRONTEND (Admin dashboard)
+  # ===========================================================================
+  management:
+    build:
+      context: ./frontend-management
+      dockerfile: Dockerfile
+    environment:
+      - VITE_API_URL=http://api:8000
+    ports:
+      - "5174:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ===========================================================================
+  # COUNTER FRONTEND (Counter display)
+  # ===========================================================================
+  counter:
+    build:
+      context: ./frontend-counter
+      dockerfile: Dockerfile
+    environment:
+      - VITE_API_URL=http://api:8000
+    ports:
+      - "5175:80"
+    depends_on:
+      - api
+    restart: unless-stopped
 
 volumes:
   api_data:
-
-
