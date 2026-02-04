@@ -55,8 +55,8 @@ def run_test():
     # Priority = 1.0 + (1/50) = 1.02.   Normal Priority = 0 + (100/50) = 2.0.
     # Let's adjust numbers so Normal has LOWER priority but HIGHER Wait Ratio.
     # Vuln: Score 1.0. Wait 1m. Priority = 1.02.
-    # Normal: Score 0.0. Wait 30m. Priority = 0.6.  <-- Lower Priority individually.
-    # But Ratio: Avg Normal Wait (30) / Avg Vuln Wait (1) = 30. (> 1.5).
+    # Normal: Score 0.0. Wait 40m. Priority = 0.8.  <-- Lower Priority individually.
+    # But Ratio: Avg Normal Wait (40) / Avg Vuln Wait (1) = 40. (> 1.5).
     # Trigger: Fairness should kick in and pick Normal because they are strictly disadvantaged.
     
     queue_2 = [
