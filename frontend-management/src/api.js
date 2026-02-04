@@ -78,6 +78,11 @@ export const resetTokenToWaiting = async (tokenId) => {
     return response.data
 }
 
+export const deleteToken = async (tokenId) => {
+    const response = await api.delete(`/tokens/${tokenId}`)
+    return response.data
+}
+
 export const getAllTokens = async () => {
     const response = await api.get('/tokens/all')
     return response.data

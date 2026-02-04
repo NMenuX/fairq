@@ -203,3 +203,14 @@ def get_all_tokens(db: Session = Depends(get_db)) -> dict:
     return {"items": items}
 
 
+@router.delete("/{token_id}")
+def delete_token(token_id: int, db: Session = Depends(get_db)):
+    """Delete a token from the system."""
+    token = db.query(models.Token).filter(models.Token.id == token_id).first()
+    if not token:
+        raise HTTPException(status_code=404, detail="Token not found")
+    
+    db.delete(token)
+    db.commit()
+    return {"status": "ok", "message": f"Token {token_id} deleted"}
+

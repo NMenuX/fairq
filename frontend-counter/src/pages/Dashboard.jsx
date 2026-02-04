@@ -291,7 +291,7 @@ function Dashboard() {
                   }
                 }}
               >
-                {counter.name}
+                {counter.name} - {counter.service_types}
               </Button>
             ))}
             {counters.length === 0 && (

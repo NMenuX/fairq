@@ -17,10 +17,11 @@ import {
     Paper,
     Chip,
     TablePagination,
-    Button
+    Button,
+    IconButton
 } from '@mui/material'
-import { Search as SearchIcon } from '@mui/icons-material'
-import { getAllTokens, getCounters, resetTokenToWaiting } from '../api'
+import { Search as SearchIcon, Delete as DeleteIcon } from '@mui/icons-material'
+import { getAllTokens, getCounters, resetTokenToWaiting, deleteToken } from '../api'
 
 function AllTokens() {
     const [tokens, setTokens] = useState([])
@@ -95,6 +96,26 @@ function AllTokens() {
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10))
         setPage(0)
+    }
+
+    const handleReset = async (tokenId) => {
+        try {
+            await resetTokenToWaiting(tokenId)
+            fetchData()
+        } catch (err) {
+            console.error('Failed to reset token', err)
+        }
+    }
+
+    const handleDelete = async (tokenId) => {
+        if (window.confirm('Are you sure you want to delete this token?')) {
+            try {
+                await deleteToken(tokenId)
+                fetchData()
+            } catch (err) {
+                console.error('Failed to delete token', err)
+            }
+        }
     }
 
     // Slice data for pagination
@@ -201,26 +222,41 @@ function AllTokens() {
                                         {token.counter_id ? (counters[token.counter_id] || `Counter ${token.counter_id}`) : '-'}
                                     </TableCell>
                                     <TableCell>
-                                        {['CALLED', 'CANCELLED'].includes(token.status) && (
-                                            <Button
+                                        <Box sx={{ display: 'flex', gap: 1 }}>
+                                            {['CALLED', 'CANCELLED'].includes(token.status) && (
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    onClick={() => handleReset(token.id)}
+                                                    sx={{
+                                                        textTransform: 'none',
+                                                        fontWeight: 600,
+                                                        borderColor: '#CBD5E1',
+                                                        color: '#475569',
+                                                        '&:hover': {
+                                                            borderColor: '#2563EB',
+                                                            color: '#2563EB',
+                                                            bgcolor: '#EFF6FF'
+                                                        }
+                                                    }}
+                                                >
+                                                    Return to Queue
+                                                </Button>
+                                            )}
+                                            <IconButton
                                                 size="small"
-                                                variant="outlined"
-                                                onClick={() => handleReset(token.id)}
+                                                onClick={() => handleDelete(token.id)}
                                                 sx={{
-                                                    textTransform: 'none',
-                                                    fontWeight: 600,
-                                                    borderColor: '#CBD5E1',
-                                                    color: '#475569',
+                                                    color: '#94A3B8',
                                                     '&:hover': {
-                                                        borderColor: '#2563EB',
-                                                        color: '#2563EB',
-                                                        bgcolor: '#EFF6FF'
+                                                        color: '#DC2626',
+                                                        bgcolor: '#FEE2E2'
                                                     }
                                                 }}
                                             >
-                                                Return to Queue
-                                            </Button>
-                                        )}
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                             )

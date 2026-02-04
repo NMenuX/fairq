@@ -27,9 +27,9 @@ class Settings(BaseSettings):
     # ==========================================================================
     # RATE LIMITING (requests per minute)
     # ==========================================================================
-    rate_limit_public: int = 30   # General public endpoints
-    rate_limit_auth: int = 10     # Login/register endpoints
-    rate_limit_otp: int = 5       # OTP send endpoint (prevent spam)
+    rate_limit_public: int = 200  # General public endpoints (increased for demo)
+    rate_limit_auth: int = 100    # Login/register endpoints (increased for demo)
+    rate_limit_otp: int = 100     # OTP send endpoint (increased for demo)
     
     # ==========================================================================
     # SMS SERVICE
