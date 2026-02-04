@@ -18,7 +18,7 @@ def run_test():
     
     print("--- Scenario 1: Vulnerability Priority Check ---")
     queue_1 = [
-        {"token_id": 101, "vulnerability_score": 0.0, "wait_minutes": 10, "number": "Normal-Wait-10m"}, # Priority ~ 0.2
+        {"token_id": 101, "vulnerability_score": 0.0, "wait_minutes": 2.5, "number": "Normal-Wait-2.5m"}, # Priority ~ 0.005
         {"token_id": 102, "vulnerability_score": 1.0, "wait_minutes": 2, "number": "Vuln-Wait-2m"},    # Priority ~ 1.04
     ]
     
