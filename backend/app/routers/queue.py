@@ -5,6 +5,7 @@ from typing import Optional
 from ..schemas.queue import QueueOverview, QueueOverviewItem
 from ..db import models
 from ..services.runtime import get_db
+from ..services.policies import dwfq
 
 
 router = APIRouter(prefix="/queue", tags=["queue"])
@@ -43,15 +44,9 @@ def queue_overview(
             created_at = created_at.replace(tzinfo=timezone.utc)
         wait_minutes = max((now - created_at).total_seconds() / 60.0, 0.0)
         
-        # Calculate priority using DWFQ logic
-        # We'll use a local helper or import if needed, but the formula is simple:
-        # P = Score + (Wait / 50) * 0.1  (from dwfq.py)
-        # To ensure consistency, let's ideally import it, but for now implementing the formula here
-        # matches the logic without circular imports if policies imports services/etc.
-        # Actually better to import: from ..services.policies import dwfq
-        
         v_score = float(t.vulnerability_score or 0.0)
-        priority = v_score + (wait_minutes / 50.0) # Matches simplified logic or use dwfq function
+        # Use the centralized logic to calculate priority
+        priority = dwfq.effective_priority(v_score, wait_minutes)
         
         items.append(QueueOverviewItem(
             token_id=t.id,
