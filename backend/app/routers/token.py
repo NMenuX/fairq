@@ -123,8 +123,6 @@ def cancel_token(token_id: int, db: Session = Depends(get_db)) -> dict[str, str]
     token.status = "CANCELLED"
     token.updated_at = datetime.now(timezone.utc)
     db.commit()
-    token.updated_at = datetime.now(timezone.utc)
-    db.commit()
     return {"status": "ok"}
 
 
@@ -158,9 +156,6 @@ def reset_token_to_waiting(token_id: int, db: Session = Depends(get_db)) -> dict
     token.updated_at = datetime.now(timezone.utc)
     db.commit()
     
-    return {"status": "ok", "message": f"Token {token.number} returned to queue"}
-
-
     return {"status": "ok", "message": f"Token {token.number} returned to queue"}
 
 

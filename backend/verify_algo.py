@@ -10,23 +10,24 @@ def run_test():
     print("=== DWFQ Algorithm Verification ===\n")
 
     # Scenario 1: Priority Test
-    # Vulnerable person (Score 1.0) waits 2 mins. Normal person (Score 0.0) waits 10 mins.
+    # Vulnerable person (Score 1.0) waits 2.5 mins. Normal person (Score 0.0) waits 3 mins.
     # Effective Priority = Score + (Wait / 50)
-    # Vuln: 1.0 + (2/50) = 1.04
-    # Norm: 0.0 + (10/50) = 0.20
+    # Vuln: 1.0 + (2.5/50) = 1.05
+    # Norm: 0.0 + (3.0/50) = 0.06
+    # Fairness Ratio: 3.0 / 2.5 = 1.2 (< 1.5 threshold)
     # Winner should be Vulnerable.
     
     print("--- Scenario 1: Vulnerability Priority Check ---")
     queue_1 = [
-        {"token_id": 101, "vulnerability_score": 0.0, "wait_minutes": 10, "number": "Normal-Wait-10m"}, # Priority ~ 0.2
-        {"token_id": 102, "vulnerability_score": 1.0, "wait_minutes": 2, "number": "Vuln-Wait-2m"},    # Priority ~ 1.04
+        {"token_id": 101, "vulnerability_score": 0.0, "wait_minutes": 3.0, "number": "Normal-Wait-3m"},
+        {"token_id": 102, "vulnerability_score": 1.0, "wait_minutes": 2.5, "number": "Vuln-Wait-2.5m"},
     ]
     
     result_1 = dwfq.suggest_next(queue_1)
     print(f"Candidates: {[i['number'] for i in queue_1]}")
     print(f"Selected:   {result_1['number'] if result_1 else 'None'}")
     
-    if result_1 and result_1["number"] == "Vuln-Wait-2m":
+    if result_1 and result_1["number"] == "Vuln-Wait-2.5m":
         print("✅ PASS: Vulnerable user prioritized correctly.\n")
     else:
         print("❌ FAIL: Wrong user selected.\n")
@@ -52,11 +53,10 @@ def run_test():
         
     # Add 1 Short-waiting Vulnerable user
     # Priority = 1.0 + (1/50) = 1.02.   Normal Priority = 0 + (100/50) = 2.0.
-    # Wait... if Normal waits 100m, their priority is 2.0.
     # Let's adjust numbers so Normal has LOWER priority but HIGHER Wait Ratio.
     # Vuln: Score 1.0. Wait 1m. Priority = 1.02.
-    # Normal: Score 0.0. Wait 30m. Priority = 0.6.  <-- Lower Priority individually.
-    # But Ratio: Avg Normal Wait (30) / Avg Vuln Wait (1) = 30. (> 1.5).
+    # Normal: Score 0.0. Wait 40m. Priority = 0.8.  <-- Lower Priority individually.
+    # But Ratio: Avg Normal Wait (40) / Avg Vuln Wait (1) = 40. (> 1.5).
     # Trigger: Fairness should kick in and pick Normal because they are strictly disadvantaged.
     
     queue_2 = [
@@ -68,8 +68,8 @@ def run_test():
     # With fairness (Ratio 40/1 = 40 > 1.5), Normal should win.
     
     result_2 = dwfq.suggest_next(queue_2)
+    # Re-calculate priority for display since suggest_next adds it to the dict
     print(f"Candidates: {[f'{i['number']} (Prio={i.get('_priority'):.2f})' for i in queue_2]}") 
-    # Note: _priority key is added by the function, so it might not be printed above unless we run it first.
     
     print(f"Selected:   {result_2['number'] if result_2 else 'None'}")
 
