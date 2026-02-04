@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     # ==========================================================================
     # FAIRQ ALGORITHM
     # ==========================================================================
-    max_fairness_ratio: float = 1.5
+    max_fairness_ratio: float = 6.0
     priority_boost_interval: int = 5
 
     class Config:

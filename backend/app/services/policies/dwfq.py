@@ -22,7 +22,7 @@ def _avg(values: list[float]) -> float:
     return sum(values) / len(values) if values else 0.0
 
 
-def suggest_next(queue_items: list[dict[str, Any]], max_fairness_ratio: float = 1.5) -> dict[str, Any] | None:
+def suggest_next(queue_items: list[dict[str, Any]], max_fairness_ratio: float = 6.0) -> dict[str, Any] | None:
     if not queue_items:
         return None
 

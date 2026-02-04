@@ -24,9 +24,45 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     
     def __init__(self, app):
         super().__init__(app)
-        # Format: {ip: {endpoint_type: [(timestamp, count)]}}
+        # Format: {ip: {endpoint_type: [timestamp1, timestamp2, ...]}}
         self._requests: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
         self._window_seconds = 60  # 1 minute window
+        self._cleanup_counter = 0
+        self._cleanup_interval = 1000  # Run cleanup every 1000 requests
+
+    def _cleanup_old_ips(self):
+        """Remove IPs that haven't made requests in the window period."""
+        now = time.time()
+        window = self._window_seconds
+
+        # Identify IPs to remove or clean
+        ips_to_remove = []
+        # Create a copy of keys to iterate safely
+        ips = list(self._requests.keys())
+
+        for ip in ips:
+            endpoints = self._requests[ip]
+            empty_endpoints = []
+
+            for ep_type, timestamps in endpoints.items():
+                # Keep only valid timestamps
+                # We can assume timestamps are sorted, but let's filter all
+                valid_timestamps = [ts for ts in timestamps if now - ts < window]
+                if not valid_timestamps:
+                    empty_endpoints.append(ep_type)
+                else:
+                    endpoints[ep_type] = valid_timestamps
+
+            # Remove empty endpoints
+            for ep in empty_endpoints:
+                del endpoints[ep]
+
+            # If no endpoints left for this IP, mark for removal
+            if not endpoints:
+                ips_to_remove.append(ip)
+
+        for ip in ips_to_remove:
+            del self._requests[ip]
     
     def _get_endpoint_type(self, path: str) -> str:
         """Categorize endpoint for rate limiting."""
@@ -88,6 +124,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next: Callable):
         """Process request with rate limiting."""
+        # Periodic cleanup to prevent memory leaks
+        self._cleanup_counter += 1
+        if self._cleanup_counter >= self._cleanup_interval:
+            self._cleanup_old_ips()
+            self._cleanup_counter = 0
+
         # Skip rate limiting for health checks
         if request.url.path == "/health":
             return await call_next(request)
