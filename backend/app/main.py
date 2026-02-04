@@ -38,7 +38,8 @@ app.add_middleware(RateLimitMiddleware)
 # Example: allow_origins=["https://fairq.example.com"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restrict in production
+    # Restrict origins to localhost for development security
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],

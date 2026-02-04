@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from app.db import session, models
 from app.core import security
 from app.schemas import user as user_schema
+from app.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 def get_db():
     db = session.SessionLocal()
@@ -50,25 +50,6 @@ def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Sessio
         data={"sub": user.email}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = security.jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except security.jwt.JWTError:
-        raise credentials_exception
-    
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if user is None:
-        raise credentials_exception
-    return user
 
 @router.get("/me", response_model=user_schema.UserOut)
 def read_users_me(current_user: Annotated[models.User, Depends(get_current_user)]):

@@ -6,6 +6,7 @@ from ..schemas.queue import QueueOverview, QueueOverviewItem
 from ..db import models
 from ..services.runtime import get_db
 from ..services.policies import dwfq
+from ..dependencies.auth import get_current_user
 
 
 router = APIRouter(prefix="/queue", tags=["queue"])
@@ -14,7 +15,8 @@ router = APIRouter(prefix="/queue", tags=["queue"])
 @router.get("/overview", response_model=QueueOverview)
 def queue_overview(
     counter_id: Optional[int] = Query(None, description="Filter by counter ID"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ) -> QueueOverview:
     """Get queue overview, optionally filtered by counter"""
     now = datetime.now(timezone.utc)
