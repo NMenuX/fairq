@@ -17,6 +17,7 @@ services:
   # BACKEND API
   # ===========================================================================
   api:
+    image: fairq-api:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -31,7 +32,7 @@ services:
       - api_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -40,11 +41,10 @@ services:
   # KIOSK FRONTEND (User-facing token generation)
   # ===========================================================================
   kiosk:
+    image: fairq-kiosk:latest
     build:
       context: ./frontend-user
       dockerfile: Dockerfile
-    environment:
-      - VITE_API_URL=http://api:8000
     ports:
       - "5173:80"
     depends_on:
@@ -55,11 +55,10 @@ services:
   # MANAGEMENT FRONTEND (Admin dashboard)
   # ===========================================================================
   management:
+    image: fairq-management:latest
     build:
       context: ./frontend-management
       dockerfile: Dockerfile
-    environment:
-      - VITE_API_URL=http://api:8000
     ports:
       - "5174:80"
     depends_on:
@@ -70,11 +69,10 @@ services:
   # COUNTER FRONTEND (Counter display)
   # ===========================================================================
   counter:
+    image: fairq-counter:latest
     build:
       context: ./frontend-counter
       dockerfile: Dockerfile
-    environment:
-      - VITE_API_URL=http://api:8000
     ports:
       - "5175:80"
     depends_on:

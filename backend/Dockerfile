@@ -11,16 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy project metadata and install deps
-COPY pyproject.toml /app/pyproject.toml
-RUN pip install --upgrade pip && pip install -e .
-
 # Copy app code
-COPY app /app/app
-COPY create_db.py /app/create_db.py
-COPY seed.py /app/seed.py
-COPY entrypoint.sh /app/entrypoint.sh
+# Copy all project files (respected by .dockerignore)
+COPY . /app
 RUN chmod +x /app/entrypoint.sh
+
+# Install deps
+RUN pip install --upgrade pip && pip install -e .
 
 # Data directory for SQLite
 RUN mkdir -p /data
