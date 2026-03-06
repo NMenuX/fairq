@@ -2,6 +2,7 @@
 Mock SMS service for development/prototype.
 In production, replace with Twilio or another SMS provider.
 """
+import re
 import random
 import string
 from datetime import datetime, timedelta
@@ -9,6 +10,11 @@ from datetime import datetime, timedelta
 
 # In-memory OTP storage (use Redis or similar in production)
 _otp_store: dict[str, dict] = {}
+
+
+def _normalize_phone(phone: str) -> str:
+    """Normalize phone number by removing spaces, dashes, and whitespace."""
+    return re.sub(r'[\s\-]', '', phone.strip())
 
 
 def generate_otp(length: int = 6) -> str:
@@ -21,6 +27,7 @@ def send_otp(phone: str) -> dict:
     Send OTP to phone number.
     Returns the OTP for testing (in production, only return success/failure).
     """
+    phone = _normalize_phone(phone)
     otp = generate_otp()
     expiry = datetime.now() + timedelta(minutes=5)
     
@@ -38,6 +45,7 @@ def send_otp(phone: str) -> dict:
 
 def verify_otp(phone: str, otp: str) -> dict:
     """Verify OTP for a phone number."""
+    phone = _normalize_phone(phone)
     if phone not in _otp_store:
         return {"success": False, "message": "No OTP found for this phone number"}
     
@@ -59,6 +67,7 @@ def verify_otp(phone: str, otp: str) -> dict:
 
 def is_phone_verified(phone: str) -> bool:
     """Check if phone number has been verified."""
+    phone = _normalize_phone(phone)
     if phone not in _otp_store:
         return False
     return _otp_store[phone].get("verified", False)
@@ -66,6 +75,7 @@ def is_phone_verified(phone: str) -> bool:
 
 def clear_otp(phone: str):
     """Clear OTP data for a phone number."""
+    phone = _normalize_phone(phone)
     if phone in _otp_store:
         del _otp_store[phone]
 

@@ -291,7 +291,7 @@ function Dashboard() {
                   }
                 }}
               >
-                {counter.name} - {counter.service_types}
+                {counter.name}
               </Button>
             ))}
             {counters.length === 0 && (
@@ -448,7 +448,7 @@ function Dashboard() {
                   <Typography variant="body2" sx={{ color: '#64748B', mb: 2 }}>{token.service_type}</Typography>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="caption" sx={{ color: '#64748B' }}>
-                      Wait: {Math.round(token.wait_minutes)}m
+                      Wait: {(() => { const m = Math.round(token.wait_minutes); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; })()}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#3B82F6', fontWeight: 600 }}>Active Selection →</Typography>
                   </Box>
@@ -488,7 +488,7 @@ function Dashboard() {
                 >
                   <Typography variant="body2" sx={{ flex: 1, fontWeight: 600, color: '#1E293B' }}>{token.number}</Typography>
                   <Typography variant="body2" sx={{ flex: 2, color: '#475569' }}>{token.service_type}</Typography>
-                  <Typography variant="body2" sx={{ width: 50, textAlign: 'right', color: '#64748B' }}>{Math.round(token.wait_minutes)}m</Typography>
+                  <Typography variant="body2" sx={{ width: 50, textAlign: 'right', color: '#64748B' }}>{(() => { const m = Math.round(token.wait_minutes); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; })()}</Typography>
                 </Box>
               ))}
             </Paper>
@@ -516,7 +516,7 @@ function Dashboard() {
                   <Grid container spacing={2}>
                     <Grid item xs={6} sx={{ borderRight: '1px solid #E2E8F0' }}>
                       <Typography variant="caption" sx={{ color: '#64748B' }}>Wait Time</Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>{Math.round(selectedToken.wait_minutes)}:00</Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>{(() => { const m = Math.round(selectedToken.wait_minutes); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; })()}</Typography>
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="caption" sx={{ color: '#64748B' }}>Customer Level</Typography>

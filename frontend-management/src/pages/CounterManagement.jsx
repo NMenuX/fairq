@@ -190,7 +190,7 @@ function CounterManagement() {
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                     <Typography variant="h6" sx={{ fontWeight: 800, color: '#2563EB' }}>{token.number}</Typography>
                                     <Typography variant="caption" sx={{ color: '#DC2626', fontWeight: 700, bgcolor: '#FEF2F2', px: 1, py: 0.2, borderRadius: 1 }}>
-                                        Wait: {Math.round(token.wait_minutes || 0)}m
+                                        Wait: {(() => { const m = Math.round(token.wait_minutes || 0); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; })()}
                                     </Typography>
                                 </Box>
                                 <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: '#1E293B' }}>{token.service_type}</Typography>

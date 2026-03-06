@@ -13,8 +13,8 @@ import {
   Grid,
   Chip,
 } from '@mui/material'
-import { 
-  getTokenStatusByNumber, 
+import {
+  getTokenStatusByNumber,
   getQueueOverview,
   getAllTokens
 } from '../api'
@@ -33,14 +33,14 @@ function CheckStatus() {
 
   const fetchTokenAndQueue = async () => {
     if (!tokenNumber.trim()) return
-    
+
     setError('')
     try {
       const [tokenData, queueData] = await Promise.all([
         getTokenStatusByNumber(tokenNumber.trim()),
         getQueueOverview(),
       ])
-      
+
       if (!tokenData) {
         setError('Token not found')
         setToken(null)
@@ -49,7 +49,7 @@ function CheckStatus() {
 
       setToken(tokenData)
       setQueue(queueData.items || [])
-      
+
       // Find tokens that are currently being served
       const allTokensData = await getAllTokens()
       const serving = allTokensData.items?.find(t => t.status === 'SERVING')
@@ -90,7 +90,7 @@ function CheckStatus() {
   const getPeopleAhead = () => {
     if (!token || queue.length === 0) return 0
     // Sort by created_at to get correct order
-    const sortedQueue = [...queue].sort((a, b) => 
+    const sortedQueue = [...queue].sort((a, b) =>
       new Date(a.created_at || 0) - new Date(b.created_at || 0)
     )
     const tokenIndex = sortedQueue.findIndex(t => t.token_id === token.id)
@@ -100,7 +100,13 @@ function CheckStatus() {
   const getEstimatedWaitTime = () => {
     const peopleAhead = getPeopleAhead()
     // Estimate ~3 minutes per person
-    return Math.round(peopleAhead * 3)
+    const totalMins = Math.round(peopleAhead * 3)
+    if (totalMins >= 60) {
+      const h = Math.floor(totalMins / 60)
+      const m = totalMins % 60
+      return `${h}h ${m}m`
+    }
+    return `${totalMins}m`
   }
 
   const isTurnSoon = () => {
@@ -112,10 +118,10 @@ function CheckStatus() {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#f0f4f8', display: 'flex', alignItems: 'center' }}>
         <Container maxWidth="sm">
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              p: 5, 
+          <Paper
+            elevation={3}
+            sx={{
+              p: 5,
               borderRadius: 3,
               bgcolor: '#fff',
               textAlign: 'center'
@@ -138,13 +144,13 @@ function CheckStatus() {
                 value={tokenNumber}
                 onChange={(e) => setTokenNumber(e.target.value)}
                 sx={{ mb: 3 }}
-                InputProps={{ 
-                  sx: { 
-                    bgcolor: '#fff', 
+                InputProps={{
+                  sx: {
+                    bgcolor: '#fff',
                     borderRadius: 2,
                     fontSize: '1.1rem',
                     py: 1
-                  } 
+                  }
                 }}
               />
               <Button
@@ -152,9 +158,9 @@ function CheckStatus() {
                 type="submit"
                 variant="contained"
                 size="large"
-                sx={{ 
-                  bgcolor: '#2563eb', 
-                  textTransform: 'none', 
+                sx={{
+                  bgcolor: '#2563eb',
+                  textTransform: 'none',
                   fontWeight: 600,
                   py: 1.5,
                   fontSize: '1.1rem'
@@ -183,10 +189,10 @@ function CheckStatus() {
         {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box sx={{ 
-              width: 32, 
-              height: 32, 
-              bgcolor: '#2563eb', 
+            <Box sx={{
+              width: 32,
+              height: 32,
+              bgcolor: '#2563eb',
               borderRadius: 1,
               display: 'flex',
               alignItems: 'center',
@@ -222,12 +228,12 @@ function CheckStatus() {
 
         {/* Your Turn Soon Alert */}
         {isTurnSoon() && (
-          <Alert 
-            severity="warning" 
+          <Alert
+            severity="warning"
             icon={<VolumeUpIcon />}
-            sx={{ 
-              mb: 3, 
-              bgcolor: '#fff3cd', 
+            sx={{
+              mb: 3,
+              bgcolor: '#fff3cd',
               border: '1px solid #ffc107',
               borderRadius: 2
             }}
@@ -246,11 +252,11 @@ function CheckStatus() {
           <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#1e293b' }}>
             Your Token Number
           </Typography>
-          <Typography 
-            variant="h2" 
-            sx={{ 
-              fontWeight: 700, 
-              mb: 4, 
+          <Typography
+            variant="h2"
+            sx={{
+              fontWeight: 700,
+              mb: 4,
               color: '#2563eb',
               textAlign: 'center'
             }}
@@ -287,7 +293,7 @@ function CheckStatus() {
                   Estimated Wait Time
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>
-                  ~{getEstimatedWaitTime()} MINS
+                  ~{getEstimatedWaitTime()}
                 </Typography>
               </Card>
             </Grid>
@@ -300,10 +306,10 @@ function CheckStatus() {
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#1e293b' }}>
               Now Serving
             </Typography>
-            <Typography 
-              variant="h3" 
-              sx={{ 
-                fontWeight: 700, 
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: 700,
                 color: '#4caf50',
                 textAlign: 'center'
               }}

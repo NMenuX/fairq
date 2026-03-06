@@ -10,7 +10,8 @@ import {
     Chip,
     LinearProgress,
     IconButton,
-    TablePagination
+    TablePagination,
+    Autocomplete
 } from '@mui/material'
 import {
     Search as SearchIcon,
@@ -18,7 +19,7 @@ import {
     ArrowForward as ArrowForwardIcon,
     Bolt as BoltIcon
 } from '@mui/icons-material'
-import { getAllTokens, getQueueOverview, getSuggestNext, callToken } from '../api'
+import { getAllTokens, getQueueOverview, callToken } from '../api'
 
 function Dashboard() {
     const [loading, setLoading] = useState(true)
@@ -30,7 +31,7 @@ function Dashboard() {
         fairness: '100%'
     })
 
-    const [suggestion, setSuggestion] = useState(null)
+    const [selectedToken, setSelectedToken] = useState(null)
     const [actionLoading, setActionLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [page, setPage] = useState(0)
@@ -48,7 +49,6 @@ function Dashboard() {
     // Filter queue based on search
     const filteredQueue = queue.filter(t =>
         t.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (t.nic && t.nic.toLowerCase().includes(searchTerm.toLowerCase())) ||
         t.service_type.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
@@ -56,12 +56,13 @@ function Dashboard() {
         fetchData()
     }, [])
 
-    const handleCallSuggested = async () => {
-        if (!suggestion) return;
+    const handleCallSelected = async () => {
+        if (!selectedToken) return;
         setActionLoading(true)
         try {
-            await callToken(suggestion.token_id || suggestion.id, null) // Call as unassigned/admin
-            fetchData() // Refresh
+            await callToken(selectedToken.token_id || selectedToken.id, null)
+            setSelectedToken(null)
+            fetchData()
         } catch (e) {
             console.error(e)
         } finally {
@@ -72,45 +73,47 @@ function Dashboard() {
     const fetchData = async () => {
         setLoading(true)
         try {
-            const [tokensData, suggestionData] = await Promise.all([
+            const [tokensData, queueData] = await Promise.all([
                 getAllTokens(),
-                getSuggestNext()
+                getQueueOverview()
             ])
 
-            setSuggestion(suggestionData)
-
             const items = tokensData.items || []
-            const waiting = items.filter(t => t.status === 'WAITING')
-            setQueue(waiting)
 
-            // Calculate REAL stats from the fetched queue
-            const totalWaiting = waiting.length
+            // Use queue overview data (has server-computed wait_minutes) for the table
+            const queueItems = queueData.items || []
+            setQueue(queueItems)
 
-            let totalWaitSeconds = 0
-            let maxWaitSeconds = 0
+            // Calculate stats from queue overview data
+            const totalWaiting = queueItems.length
 
-            const now = new Date()
+            let totalWaitMins = 0
+            let maxWaitMins = 0
 
-            waiting.forEach(t => {
-                const created = new Date(t.created_at || Date.now()) // Handle potential missing fields
-                const waitSeconds = (now - created) / 1000
-                totalWaitSeconds += waitSeconds
-                if (waitSeconds > maxWaitSeconds) maxWaitSeconds = waitSeconds
+            queueItems.forEach(t => {
+                const waitMins = t.wait_minutes || 0
+                totalWaitMins += waitMins
+                if (waitMins > maxWaitMins) maxWaitMins = waitMins
             })
 
-            const avgSeconds = totalWaiting > 0 ? (totalWaitSeconds / totalWaiting) : 0
+            const avgMins = totalWaiting > 0 ? (totalWaitMins / totalWaiting) : 0
 
-            const formatDuration = (secs) => {
-                if (secs < 60) return '0m'
-                const m = Math.floor(secs / 60)
-                const s = Math.floor(secs % 60)
-                return `${m}m ${s}s`
+            const formatDuration = (mins) => {
+                const totalMins = Math.round(mins)
+                if (totalMins < 1) return '0m 0s'
+                if (totalMins >= 60) {
+                    const h = Math.floor(totalMins / 60)
+                    const m = totalMins % 60
+                    return `${h}h ${m}m`
+                }
+                const s = Math.round((mins % 1) * 60)
+                return `${totalMins}m ${s}s`
             }
 
             setStats({
                 totalWaiting: totalWaiting,
-                avgWait: formatDuration(avgSeconds),
-                longestWait: formatDuration(maxWaitSeconds),
+                avgWait: formatDuration(avgMins),
+                longestWait: formatDuration(maxWaitMins),
                 fairness: '1.00' // Simple default, or fetch if available
             })
 
@@ -215,10 +218,11 @@ function Dashboard() {
                                 {filteredQueue
                                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                     .map((token, idx) => {
-                                        const waitTimeDisplay = isNaN(token.wait_minutes) ? '0m 0s' : `${Math.round(token.wait_minutes || 0)}m ${Math.round((token.wait_minutes % 1) * 60)}s`;
+                                        const totalMins = Math.round(token.wait_minutes || 0);
+                                        const waitTimeDisplay = isNaN(token.wait_minutes) ? '0m 0s' : (totalMins >= 60 ? `${Math.floor(totalMins / 60)}h ${totalMins % 60}m` : `${totalMins}m ${Math.round((token.wait_minutes % 1) * 60)}s`);
 
                                         return (
-                                            <Box key={token.id} sx={{
+                                            <Box key={token.token_id} sx={{
                                                 display: 'grid',
                                                 gridTemplateColumns: '1.2fr 2fr 1.5fr 1fr 1fr',
                                                 py: 2, px: 3,
@@ -264,34 +268,52 @@ function Dashboard() {
                     </Paper>
                 </Box>
 
-                {/* Right Section: Actions */}
+                {/* Right Section: Main Desk */}
                 <Box sx={{ minWidth: 0 }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}>
                         <Box>
-                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1E293B', mb: 2 }}>Next Customer</Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1E293B', mb: 2 }}>Main Desk</Typography>
                             <Paper elevation={0} sx={{ p: 3, border: '1px solid #E2E8F0', borderRadius: 3, bgcolor: 'white', width: '100%' }}>
-                                <Button
-                                    fullWidth
-                                    variant="contained"
-                                    startIcon={<BoltIcon />}
-                                    onClick={fetchData}
-                                    sx={{ bgcolor: '#2563EB', color: 'white', py: 1.5, borderRadius: 2, fontWeight: 600, textTransform: 'none', mb: 3 }}
-                                >
-                                    Suggest Next Token
-                                </Button>
+                                <Typography variant="body2" sx={{ color: '#64748B', mb: 2, fontSize: '0.85rem' }}>
+                                    Select a token to call the customer to the main desk.
+                                </Typography>
 
-                                <Box sx={{ bgcolor: '#F8FAFC', borderRadius: 2, py: 3, textAlign: 'center', mb: 3 }}>
-                                    <Typography variant="caption" sx={{ color: '#64748B', mb: 0.5, display: 'block' }}>Suggested Token</Typography>
-                                    <Typography variant="h3" sx={{ fontWeight: 800, color: '#2563EB' }}>
-                                        {suggestion?.number || '--'}
-                                    </Typography>
-                                </Box>
+                                <Autocomplete
+                                    options={queue}
+                                    value={selectedToken}
+                                    onChange={(e, newValue) => setSelectedToken(newValue)}
+                                    getOptionLabel={(option) => `${option.number} — ${option.service_type}`}
+                                    renderOption={(props, option) => (
+                                        <Box component="li" {...props} sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 1 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{option.number}</Typography>
+                                            <Typography variant="caption" sx={{ color: '#64748B' }}>{option.service_type}</Typography>
+                                        </Box>
+                                    )}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            placeholder="Search token..."
+                                            size="small"
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': { borderRadius: 2 },
+                                                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E2E8F0' }
+                                            }}
+                                        />
+                                    )}
+                                    sx={{ mb: 3 }}
+                                    noOptionsText="No waiting tokens"
+                                />
 
-                                {suggestion && (
+                                {selectedToken && (
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
+                                        <Box sx={{ bgcolor: '#F8FAFC', borderRadius: 2, py: 2, textAlign: 'center', mb: 1 }}>
+                                            <Typography variant="h3" sx={{ fontWeight: 800, color: '#2563EB' }}>
+                                                {selectedToken.number}
+                                            </Typography>
+                                        </Box>
                                         {[
-                                            { l: 'Service', v: suggestion.service_type, c: '#1E293B' },
-                                            { l: 'Vulnerability', v: suggestion.vulnerability_score > 0.5 ? 'High' : 'Standard', c: suggestion.vulnerability_score > 0.5 ? '#D97706' : '#1E293B' }
+                                            { l: 'Service', v: selectedToken.service_type, c: '#1E293B' },
+                                            { l: 'Vulnerability', v: selectedToken.vulnerability_score > 0.5 ? 'High' : 'Standard', c: selectedToken.vulnerability_score > 0.5 ? '#D97706' : '#1E293B' }
                                         ].map((row, i) => (
                                             <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <Typography variant="body2" sx={{ color: '#94A3B8' }}>{row.l}:</Typography>
@@ -305,11 +327,11 @@ function Dashboard() {
                                     fullWidth
                                     variant="contained"
                                     endIcon={<ArrowForwardIcon />}
-                                    disabled={!suggestion || actionLoading}
-                                    onClick={handleCallSuggested}
-                                    sx={{ bgcolor: '#F1F5F9', color: '#1E293B', py: 1.5, borderRadius: 2, fontWeight: 700, textTransform: 'none', boxShadow: 'none', '&:hover': { bgcolor: '#E2E8F0', boxShadow: 'none' } }}
+                                    disabled={!selectedToken || actionLoading}
+                                    onClick={handleCallSelected}
+                                    sx={{ bgcolor: '#2563EB', color: 'white', py: 1.5, borderRadius: 2, fontWeight: 700, textTransform: 'none', '&:hover': { bgcolor: '#1D4ED8' } }}
                                 >
-                                    Call Next
+                                    Call to Main Desk
                                 </Button>
                             </Paper>
                         </Box>
