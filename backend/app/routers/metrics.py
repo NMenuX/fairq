@@ -83,13 +83,13 @@ def metrics_summary(db: Session = Depends(get_db)) -> dict:
     # 5. Wait Time Trend (Mocking historical distribution for now based on real current values to prevent empty charts if no history)
     # In a real app we'd group by date.
     trend_data = [
-        {"day": "Mon", "vulnerable": 12, "normal": 15},
-        {"day": "Tue", "vulnerable": 10, "normal": 13},
-        {"day": "Wed", "vulnerable": 8, "normal": 18},
-        {"day": "Thu", "vulnerable": 15, "normal": 12},
-        {"day": "Fri", "vulnerable": 11, "normal": 14},
-        {"day": "Sat", "vulnerable": 13, "normal": 11},
-        {"day": "Sun", "vulnerable": 9, "normal": 16},
+        {"day": "Mon", "priority": 12, "standard": 15},
+        {"day": "Tue", "priority": 10, "standard": 13},
+        {"day": "Wed", "priority": 8, "standard": 18},
+        {"day": "Thu", "priority": 15, "standard": 12},
+        {"day": "Fri", "priority": 11, "standard": 14},
+        {"day": "Sat", "priority": 13, "standard": 11},
+        {"day": "Sun", "priority": 9, "standard": 16},
     ]
 
     # 6. Wait Distribution (Bucketizing today's waiting + served)

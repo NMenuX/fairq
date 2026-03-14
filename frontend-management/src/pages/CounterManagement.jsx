@@ -12,7 +12,6 @@ import {
     Button,
     Chip,
     IconButton,
-    Avatar,
     TextField,
     InputAdornment
 } from '@mui/material'
@@ -21,9 +20,10 @@ import {
     FilterList as FilterListIcon,
     Circle as CircleIcon,
     MoreVert as MoreVertIcon,
-    Person as PersonIcon
+    Person as PersonIcon,
+    Download as DownloadIcon
 } from '@mui/icons-material'
-import { getCounters, getAllTokens, getQueueOverview, callNextTokenForCounter } from '../api'
+import { getCounters, getAllTokens, getQueueOverview, callNextTokenForCounter, downloadCounterReport } from '../api'
 
 function CounterManagement() {
     const [counters, setCounters] = useState([])
@@ -233,9 +233,17 @@ function CounterManagement() {
                                             <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: counter.active ? '#22C55E' : '#94A3B8', boxShadow: counter.active ? '0 0 0 3px #DCFCE7' : 'none' }} />
                                             <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>{counter.name}</Typography>
                                         </Box>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Avatar sx={{ width: 28, height: 28, border: '2px solid white', boxShadow: '0 0 0 1px #E2E8F0' }} src={`https://i.pravatar.cc/150?u=${counter.id}`} />
-                                        </Box>
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => downloadCounterReport(counter.id)}
+                                            title="Download Report"
+                                            sx={{
+                                                color: '#64748B',
+                                                '&:hover': { color: '#2563EB', bgcolor: '#EFF6FF' }
+                                            }}
+                                        >
+                                            <DownloadIcon fontSize="small" />
+                                        </IconButton>
                                     </Box>
 
                                     <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>

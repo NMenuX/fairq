@@ -103,7 +103,7 @@ function Metrics() {
                 <Paper elevation={0} sx={{ p: 3, border: '1px solid #E2E8F0', borderRadius: 3, bgcolor: 'white', height: 400, display: 'flex', flexDirection: 'column' }}>
                     <Box sx={{ mb: 3 }}>
                         <Typography variant="h6" sx={{ fontWeight: 700, color: '#1E293B' }}>Wait Time Trend</Typography>
-                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>Last 7 Days (Vulnerable vs Normal)</Typography>
+                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>Last 7 Days (Priority vs Standard)</Typography>
                     </Box>
                     <Box sx={{ flex: 1, width: '100%', minHeight: 0 }}>
                         <ResponsiveContainer width="100%" height="100%">
@@ -112,8 +112,8 @@ function Metrics() {
                                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} dy={10} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
                                 <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                                <Line type="monotone" dataKey="vulnerable" name="Vulnerable" stroke="#2563EB" strokeWidth={3} dot={false} />
-                                <Line type="monotone" dataKey="normal" name="Normal" stroke="#F59E0B" strokeDasharray="5 5" strokeWidth={3} dot={false} />
+                                <Line type="monotone" dataKey="priority" name="Priority" stroke="#2563EB" strokeWidth={3} dot={false} />
+                                <Line type="monotone" dataKey="standard" name="Standard" stroke="#F59E0B" strokeDasharray="5 5" strokeWidth={3} dot={false} />
                             </LineChart>
                         </ResponsiveContainer>
                     </Box>

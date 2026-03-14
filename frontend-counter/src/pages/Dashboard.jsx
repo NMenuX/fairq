@@ -179,18 +179,26 @@ function Dashboard() {
 
       // Auto-update selected token if it exists
       if (selectedToken) {
-        const updated = allItems.find((t) => t.token_id === selectedToken.token_id)
-        if (updated) {
-          setSelectedToken(updated)
-          const fullToken = allTokensData.items.find((t) => t.id === updated.token_id)
+        // First check assigned tokens (includes CALLED/SERVING)
+        const assignedMatch = assigned.find(t => (t.token_id || t.id) === selectedToken.token_id)
+        if (assignedMatch) {
+          setSelectedToken(assignedMatch)
+          const fullToken = allTokensItems.find(t => t.id === (assignedMatch.token_id || assignedMatch.id))
           if (fullToken) setSelectedTokenFull(fullToken)
         } else {
-          // If not in queue check if completed/cancelled in all tokens
-          const found = allTokensData.items.find(t => t.id === selectedToken.token_id)
-          if (found) {
-            // Keep showing it but update status
-            setSelectedTokenFull(found)
-            setSelectedToken({ ...selectedToken, status: found.status })
+          // Check queue overview (WAITING tokens)
+          const queueMatch = allItems.find(t => t.token_id === selectedToken.token_id)
+          if (queueMatch) {
+            setSelectedToken(queueMatch)
+            const fullToken = allTokensItems.find(t => t.id === queueMatch.token_id)
+            if (fullToken) setSelectedTokenFull(fullToken)
+          } else {
+            // Fallback: check all tokens (completed/cancelled)
+            const found = allTokensItems.find(t => t.id === selectedToken.token_id)
+            if (found) {
+              setSelectedTokenFull(found)
+              setSelectedToken({ ...selectedToken, status: found.status })
+            }
           }
         }
       }

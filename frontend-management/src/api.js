@@ -129,3 +129,9 @@ export const getQueueOverviewForCounter = async (counterId) => {
     const response = await api.get(`/queue/overview?counter_id=${counterId}`)
     return response.data
 }
+
+// Counter report download
+export const downloadCounterReport = (counterId) => {
+    const url = `${API_BASE_URL}/counters/${counterId}/report`
+    window.open(url, '_blank')
+}

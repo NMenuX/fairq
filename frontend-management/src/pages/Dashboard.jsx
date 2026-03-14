@@ -204,7 +204,7 @@ function Dashboard() {
                             borderBottom: '1px solid #E2E8F0',
                             alignItems: 'center'
                         }}>
-                            {['Token #', 'Customer Name', 'Service', 'Wait Time', 'Vulnerability'].map(h => (
+                            {['Token #', 'Customer Name', 'Service', 'Wait Time', 'Priority'].map(h => (
                                 <Typography key={h} variant="caption" sx={{ color: '#64748B', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</Typography>
                             ))}
                         </Box>
@@ -313,7 +313,7 @@ function Dashboard() {
                                         </Box>
                                         {[
                                             { l: 'Service', v: selectedToken.service_type, c: '#1E293B' },
-                                            { l: 'Vulnerability', v: selectedToken.vulnerability_score > 0.5 ? 'High' : 'Standard', c: selectedToken.vulnerability_score > 0.5 ? '#D97706' : '#1E293B' }
+                                            { l: 'Priority', v: selectedToken.vulnerability_score > 0.5 ? 'High' : 'Standard', c: selectedToken.vulnerability_score > 0.5 ? '#D97706' : '#1E293B' }
                                         ].map((row, i) => (
                                             <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <Typography variant="body2" sx={{ color: '#94A3B8' }}>{row.l}:</Typography>
@@ -339,7 +339,7 @@ function Dashboard() {
                         <Paper elevation={0} sx={{ p: 3, border: '1px solid #E2E8F0', borderRadius: 3, bgcolor: 'white', width: '100%' }}>
                             <Typography variant="h6" sx={{ fontWeight: 700, color: '#1E293B', mb: 1 }}>Queue Status</Typography>
                             <Typography variant="body2" sx={{ color: '#64748B', mb: 3, lineHeight: 1.5, fontSize: '0.875rem' }}>
-                                The queue is currently busy. Prioritize customers with high vulnerability.
+                                The queue is currently busy. Prioritize customers with high priority levels.
                             </Typography>
 
                             <LinearProgress variant="determinate" value={75} sx={{ height: 8, borderRadius: 4, bgcolor: '#F1F5F9', mb: 2, '& .MuiLinearProgress-bar': { bgcolor: '#2563EB', borderRadius: 4 } }} />

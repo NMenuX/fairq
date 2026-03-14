@@ -1,5 +1,7 @@
+import io
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -227,4 +229,232 @@ def call_next_token_for_counter(
     return {"token_id": token.id, "number": token.number, "status": "CALLED"}
 
 
+@router.get("/{counter_id}/report")
+def download_counter_report(
+    counter_id: int,
+    db: Session = Depends(get_db)
+):
+    """Download a PDF performance report for a specific counter"""
+    from fpdf import FPDF
 
+    counter = db.get(models.Counter, counter_id)
+    if not counter:
+        raise HTTPException(status_code=404, detail="Counter not found")
+
+    now = datetime.now(timezone.utc)
+
+    # Fetch all tokens associated with this counter
+    tokens = (
+        db.query(models.Token)
+        .filter(models.Token.counter_id == counter_id)
+        .order_by(models.Token.created_at.asc())
+        .all()
+    )
+
+    # --- Compute metrics ---
+    completed = [t for t in tokens if t.status == "COMPLETED"]
+    cancelled = [t for t in tokens if t.status == "CANCELLED"]
+    total_served = len(completed)
+    total_cancelled = len(cancelled)
+    total_finished = total_served + total_cancelled
+    completion_rate = (total_served / total_finished * 100) if total_finished > 0 else 0.0
+
+    total_wait_seconds = 0
+    for t in completed:
+        start = t.created_at
+        end = t.updated_at
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        total_wait_seconds += (end - start).total_seconds()
+
+    avg_wait_seconds = total_wait_seconds / total_served if total_served > 0 else 0
+    avg_wait_min = int(avg_wait_seconds // 60)
+    avg_wait_sec = int(avg_wait_seconds % 60)
+    avg_wait_display = f"{avg_wait_min}m {avg_wait_sec}s"
+
+    service_counts = {}
+    for t in tokens:
+        service_counts[t.service_type] = service_counts.get(t.service_type, 0) + 1
+
+    high_vuln = sum(1 for t in tokens if (t.vulnerability_score or 0) > 0.5)
+    standard = len(tokens) - high_vuln
+    service_types_list = counter.get_service_types_list()
+
+    # --- Build PDF ---
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    # Header
+    pdf.set_fill_color(30, 41, 59)  # Dark navy
+    pdf.rect(0, 0, 210, 35, style="F")
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.set_y(8)
+    pdf.cell(0, 10, "FairQ", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, "Counter Performance Report", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(12)
+    pdf.set_text_color(0, 0, 0)
+
+    # Counter info
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(0, 8, counter.name, new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(100, 116, 139)
+    pdf.cell(0, 5, f"Generated: {now.strftime('%Y-%m-%d %H:%M UTC')}  |  Status: {'Active' if counter.active else 'Inactive'}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 5, f"Service Types: {', '.join(service_types_list) if service_types_list else 'General'}", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(6)
+    pdf.set_draw_color(226, 232, 240)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(6)
+
+    # Performance Summary - KPI boxes
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 7, "Performance Summary", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+
+    kpi_data = [
+        ("Tokens Served", str(total_served)),
+        ("Tokens Cancelled", str(total_cancelled)),
+        ("Completion Rate", f"{completion_rate:.1f}%"),
+        ("Avg. Wait Time", avg_wait_display),
+    ]
+    col_w = 45
+    start_x = 10
+    y_pos = pdf.get_y()
+    for i, (label, value) in enumerate(kpi_data):
+        x = start_x + i * col_w
+        pdf.set_fill_color(248, 250, 252)
+        pdf.rect(x, y_pos, col_w - 2, 20, style="F")
+        pdf.set_xy(x + 2, y_pos + 2)
+        pdf.set_font("Helvetica", "", 7)
+        pdf.set_text_color(100, 116, 139)
+        pdf.cell(col_w - 4, 4, label)
+        pdf.set_xy(x + 2, y_pos + 8)
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_text_color(30, 41, 59)
+        pdf.cell(col_w - 4, 8, value)
+
+    pdf.set_y(y_pos + 25)
+
+    # Service Type Breakdown
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 7, "Service Type Breakdown", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+
+    if service_counts:
+        pdf.set_fill_color(248, 250, 252)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_text_color(100, 116, 139)
+        pdf.cell(95, 7, "Service Type", border=0, fill=True)
+        pdf.cell(40, 7, "Count", border=0, fill=True, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(30, 41, 59)
+        for stype, count in service_counts.items():
+            pdf.cell(95, 6, stype, border=0)
+            pdf.cell(40, 6, str(count), border=0, new_x="LMARGIN", new_y="NEXT")
+    else:
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(148, 163, 184)
+        pdf.cell(0, 6, "No tokens processed yet", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(4)
+
+    # Priority Breakdown
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 7, "Priority Breakdown", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(30, 41, 59)
+    pdf.cell(95, 6, "High Priority (score > 0.5)")
+    pdf.cell(40, 6, str(high_vuln), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(95, 6, "Standard Priority")
+    pdf.cell(40, 6, str(standard), new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(6)
+    pdf.set_draw_color(226, 232, 240)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(6)
+
+    # Token Details Table
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(0, 7, "Token Details", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+
+    headers = ["Token #", "Service", "Status", "Vuln.", "Created", "Completed", "Wait"]
+    col_widths = [20, 38, 22, 14, 34, 34, 18]
+
+    # Table header
+    pdf.set_fill_color(30, 41, 59)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 7)
+    for i, h in enumerate(headers):
+        pdf.cell(col_widths[i], 7, h, border=0, fill=True)
+    pdf.ln()
+
+    # Table rows
+    pdf.set_font("Helvetica", "", 7)
+    pdf.set_text_color(30, 41, 59)
+    for idx, t in enumerate(tokens):
+        start = t.created_at
+        end = t.updated_at
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        wait_min = round((end - start).total_seconds() / 60.0, 1)
+
+        if idx % 2 == 0:
+            pdf.set_fill_color(248, 250, 252)
+        else:
+            pdf.set_fill_color(255, 255, 255)
+
+        row = [
+            t.number,
+            t.service_type[:18],
+            t.status,
+            str(round(t.vulnerability_score or 0, 2)),
+            start.strftime("%Y-%m-%d %H:%M"),
+            end.strftime("%Y-%m-%d %H:%M"),
+            f"{wait_min}m",
+        ]
+        for i, val in enumerate(row):
+            pdf.cell(col_widths[i], 6, val, border=0, fill=True)
+        pdf.ln()
+
+    if not tokens:
+        pdf.set_font("Helvetica", "I", 9)
+        pdf.set_text_color(148, 163, 184)
+        pdf.cell(0, 8, "No tokens have been processed by this counter yet.", new_x="LMARGIN", new_y="NEXT")
+
+    # Footer
+    pdf.ln(10)
+    pdf.set_draw_color(226, 232, 240)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+    pdf.set_font("Helvetica", "I", 7)
+    pdf.set_text_color(148, 163, 184)
+    pdf.cell(0, 5, "FairQ - Fairness-Aware Bank Queue Management System", align="C")
+
+    # Output
+    pdf_bytes = pdf.output()
+    output = io.BytesIO(pdf_bytes)
+    output.seek(0)
+
+    safe_name = counter.name.replace(" ", "_").lower()
+    filename = f"fairq_report_{safe_name}_{now.strftime('%Y%m%d')}.pdf"
+
+    return StreamingResponse(
+        output,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
