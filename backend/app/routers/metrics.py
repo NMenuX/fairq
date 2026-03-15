@@ -123,6 +123,35 @@ def metrics_summary(db: Session = Depends(get_db)) -> dict:
 
     distribution_data = [{"range": k, "count": v} for k, v in buckets.items()]
 
+    # 7. Peak Hours Heatmap - Token arrivals grouped by day of week and hour
+    all_tokens = db.query(models.Token).all()
+    days_order = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    hours = list(range(8, 20))  # 8am to 7pm (business hours)
+
+    # Build count matrix
+    heatmap_counts = {}
+    for d in days_order:
+        for h in hours:
+            heatmap_counts[(d, h)] = 0
+
+    for t in all_tokens:
+        created = t.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        day_name = created.strftime("%a")  # Mon, Tue, etc.
+        hour = created.hour
+        if day_name in days_order and hour in hours:
+            heatmap_counts[(day_name, hour)] += 1
+
+    heatmap_data = []
+    for d in days_order:
+        for h in hours:
+            heatmap_data.append({
+                "day": d,
+                "hour": h,
+                "count": heatmap_counts[(d, h)]
+            })
+
     return {
         "kpi": [
             {"label": "Total Tokens Served", "value": str(total_served), "trend": "+0.0%", "positive": True, "subtext": "All Time"},
@@ -131,7 +160,8 @@ def metrics_summary(db: Session = Depends(get_db)) -> dict:
             {"label": "Fairness Ratio (β)", "value": f"{fairness_ratio:.2f}", "trend": "0.00", "positive": True, "subtext": "Current Queue"},
         ],
         "trend": trend_data,
-        "distribution": distribution_data
+        "distribution": distribution_data,
+        "heatmap": heatmap_data
     }
 
 
