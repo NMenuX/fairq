@@ -165,3 +165,48 @@ def metrics_summary(db: Session = Depends(get_db)) -> dict:
     }
 
 
+@router.get("/counter-comparison")
+def counter_comparison(db: Session = Depends(get_db)) -> dict:
+    """Compare performance across all counters."""
+    now = datetime.now(timezone.utc)
+    counters = db.query(models.Counter).all()
+
+    comparison = []
+    for counter in counters:
+        # Get all tokens assigned to this counter
+        tokens = db.query(models.Token).filter(
+            models.Token.counter_id == counter.id
+        ).all()
+
+        served = sum(1 for t in tokens if t.status == "COMPLETED")
+        cancelled = sum(1 for t in tokens if t.status == "CANCELLED")
+        total_finished = served + cancelled
+
+        # Avg wait time (for completed tokens)
+        completed = [t for t in tokens if t.status == "COMPLETED"]
+        avg_wait_min = 0.0
+        if completed:
+            total_sec = 0
+            for t in completed:
+                start = t.created_at
+                end = t.updated_at
+                if start.tzinfo is None:
+                    start = start.replace(tzinfo=timezone.utc)
+                if end.tzinfo is None:
+                    end = end.replace(tzinfo=timezone.utc)
+                total_sec += (end - start).total_seconds()
+            avg_wait_min = round((total_sec / len(completed)) / 60, 1)
+
+        # Completion rate
+        completion_rate = round((served / total_finished * 100), 1) if total_finished > 0 else 0.0
+
+        comparison.append({
+            "name": counter.name,
+            "served": served,
+            "avgWait": avg_wait_min,
+            "completionRate": completion_rate,
+            "active": counter.active
+        })
+
+    return {"counters": comparison}
+

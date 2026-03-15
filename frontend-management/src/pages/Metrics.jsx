@@ -16,18 +16,24 @@ import {
     CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer
 } from 'recharts'
 
-import { getMetrics } from '../api'
+import { getMetrics, getCounterComparison } from '../api'
 
 function Metrics() {
     const [timeRange, setTimeRange] = useState('today')
     const [metrics, setMetrics] = useState(null)
+    const [comparison, setComparison] = useState(null)
+    const [compMetric, setCompMetric] = useState('served')
     const [loading, setLoading] = useState(true)
 
     React.useEffect(() => {
         const fetchMetrics = async () => {
             try {
-                const data = await getMetrics()
+                const [data, compData] = await Promise.all([
+                    getMetrics(),
+                    getCounterComparison()
+                ])
                 setMetrics(data)
+                setComparison(compData.counters || [])
             } catch (error) {
                 console.error("Failed to fetch metrics", error)
             } finally {
@@ -164,6 +170,71 @@ function Metrics() {
                 </Paper>
 
             </Box>
+
+            {/* Counter Performance Comparison */}
+            {comparison && comparison.length > 0 && (
+                <Paper elevation={0} sx={{ p: 3, border: '1px solid #E2E8F0', borderRadius: 3, bgcolor: 'white', mt: 3 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Box>
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1E293B' }}>Counter Performance</Typography>
+                            <Typography variant="caption" sx={{ color: '#94A3B8' }}>Compare counters side by side</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            {[
+                                { key: 'served', label: 'Tokens Served' },
+                                { key: 'avgWait', label: 'Avg Wait (min)' },
+                                { key: 'completionRate', label: 'Completion %' }
+                            ].map(m => (
+                                <Button
+                                    key={m.key}
+                                    size="small"
+                                    variant={compMetric === m.key ? 'contained' : 'outlined'}
+                                    onClick={() => setCompMetric(m.key)}
+                                    sx={{
+                                        textTransform: 'none',
+                                        fontWeight: 600,
+                                        fontSize: '0.75rem',
+                                        borderRadius: 2,
+                                        px: 2,
+                                        ...(compMetric === m.key
+                                            ? { bgcolor: '#1E293B', '&:hover': { bgcolor: '#0F172A' } }
+                                            : { borderColor: '#E2E8F0', color: '#64748B', '&:hover': { borderColor: '#94A3B8' } }
+                                        )
+                                    }}
+                                >
+                                    {m.label}
+                                </Button>
+                            ))}
+                        </Box>
+                    </Box>
+                    <Box sx={{ height: 300, width: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={comparison} barCategoryGap="20%">
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                                <RechartsTooltip
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                    formatter={(value) => [
+                                        compMetric === 'avgWait' ? `${value} min` : compMetric === 'completionRate' ? `${value}%` : value,
+                                        compMetric === 'served' ? 'Tokens Served' : compMetric === 'avgWait' ? 'Avg Wait Time' : 'Completion Rate'
+                                    ]}
+                                />
+                                <Bar
+                                    dataKey={compMetric}
+                                    radius={[6, 6, 0, 0]}
+                                    maxBarSize={60}
+                                >
+                                    {comparison.map((entry, index) => {
+                                        const colors = ['#2563EB', '#7C3AED', '#0891B2', '#059669', '#D97706', '#DC2626']
+                                        return <rect key={index} fill={colors[index % colors.length]} />
+                                    })}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Box>
+                </Paper>
+            )}
 
             {/* Peak Hours Heatmap */}
             {heatmap && heatmap.length > 0 && (

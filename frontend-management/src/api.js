@@ -93,6 +93,11 @@ export const getMetrics = async () => {
     return response.data
 }
 
+export const getCounterComparison = async () => {
+    const response = await api.get('/metrics/counter-comparison')
+    return response.data
+}
+
 // Counter management endpoints
 export const getCounters = async () => {
     const response = await api.get('/counters')
