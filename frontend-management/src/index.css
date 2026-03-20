@@ -1,0 +1,26 @@
+/* Reset default Vite styles */
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  /* Prevent horizontal scroll */
+  background-color: #F8FAFC;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
